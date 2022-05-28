@@ -6,11 +6,11 @@
 #define EASYNVR_PLUGIN_H
 
 #include "EasyNvr.h"
-#include "LuaBridge/LuaBridge.h"
+#include "luakit/lua_kit.h"
 #include "iostream"
 
 using namespace std;
-using namespace luabridge;
+
 
 class Plugin {
     struct Weight {
@@ -27,11 +27,13 @@ public:
 
     Plugin(const char *script);
 
+    void Hello();
 
 private:
     //lua 虚拟机
-    lua_State *L;
+    luakit::kit_state *L;
     Weight weight;
+    char *test = "name";
 };
 
 

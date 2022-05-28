@@ -3,14 +3,11 @@
 --- Created by uma-pc001.
 --- DateTime: 2022/5/27 15:23
 ---
-
-
 Plugin = {
-    Name = "Helmet_Head_Person",
+    Name = "Helmet_Head_Person";
     Path = "weights/helmet.gpu.pt"
 }
-MsgList = {}
-function Plugin:Run()
-    print("Name:", self.Path)
-    return 0
+hello()
+function Run()
+    print("Name:")
 end
