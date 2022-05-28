@@ -34,7 +34,7 @@ Plugin::Plugin(const char *script) {
     auto Plugin = getGlobal(L, "Plugin");
     auto run = Plugin["Run"];
     call<bool>(L, "Run", 1);
-    run("123");
+    run("1234");
 
 }
 
