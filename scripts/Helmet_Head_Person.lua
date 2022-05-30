@@ -3,13 +3,21 @@
 --- Created by uma-pc001.
 --- DateTime: 2022/5/27 15:23
 ---
+
+
 Plugin = {
-    Name = "Helmet_Head_Person";
-    Path = "weights/helmet.gpu.pt"
+    name = "helmet",
+    pt = "weights/helmet",
+    labels = { { name = "person", render = true, text = "人员", threshold = 7.5, flag = true },
+               { name = "head", render = true, text = "未戴安全帽", threshold = 7.6, flag = true },
+               { name = "helmet", render = true, text = "安全帽", flag = true } },
+    threshold = 6.2,
+    enable = true
 }
-function Run()
-    print("Single Run")
-end
 function Plugin:Run()
     print("Plugin Run")
+    for k, v in pairs(events) do
+        print("lvec", k)
+    end
+    return 0
 end
