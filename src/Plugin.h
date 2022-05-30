@@ -13,26 +13,29 @@ using namespace std;
 
 
 class Plugin {
-    struct Weight {
-        string name;
-        double threshold;
-        bool enable;
-        unordered_map<int, std::string> labels;
-        string model;
-    };
 public:
     ~Plugin() {
-        L.close();
         std::cout << "Plugin  destory..." << std::endl;
     }
 
     Plugin(const char *script);
 
+    string Name();
+
+    Weight WeightInfo();
+
+    luakit::kit_state luaEngine(string id);
+
+    string labelText(int idx);
 
 private:
     //lua 虚拟机
-    luakit::kit_state L;
+
     Weight weight;
+
+    string script;
+
+    map<string, luakit::kit_state> luaEngines;
 };
 
 

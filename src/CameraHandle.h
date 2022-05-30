@@ -7,6 +7,7 @@
 
 #include "CameraPull.h"
 #include "YoloV5.h"
+#include "PluginManager.h"
 
 class CameraHandle {
 public:
@@ -17,9 +18,20 @@ public:
     CameraHandle(string id, string url);
 
 private:
-    CameraPull *cameraPull;//拉取器
+    void CameraHandle::Handle(cv::Mat frame);
+
+private:
     string url;
     string id;
+    bool prediction;
+    bool render;
+    int frameCount;//帧数
+
+    CameraPull *cameraPull;//拉取器
+    YoloV5 *yolo;
+    set<string> algorithm_list;
+
+    map<string, Plugin *> plugins;
 };
 
 

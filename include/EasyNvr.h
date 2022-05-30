@@ -13,11 +13,19 @@
 #include "spdlog/spdlog.h"
 #include "scope_guard.hpp"
 
+using namespace std;
+struct Label {
+    string name;
+    bool render;
+    string text;
+    float threshold;
+    bool flag;
+};
 struct Weight {
-    std::string name;
-    double threshold;
+    string name;
+    float threshold;
     bool enable;
-    std::unordered_map<int, std::string> labels;
-    std::string model;
+    unordered_map<int, Label> labels;
+    string pt;
 };
 #endif //EASYNVR_EASYNVR_H

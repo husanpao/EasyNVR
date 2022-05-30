@@ -4,63 +4,43 @@
 
 #include "YoloV5.h"
 
+YoloV5::YoloV5(map<string, Plugin *> plugins, bool isCuda, int height, int width, float confThres,
+               float iouThres) {
+    map<string, Plugin *>::iterator pluginIterator;
+    this->height = height;
+    this->width = width;
+    this->isCuda = isCuda;
+    this->iouThres = iouThres;
+    this->confThres = confThres;
+    for (pluginIterator = plugins.begin(); pluginIterator != plugins.end(); pluginIterator++) {
+        string path = fmt::format("{}.{}.pt", pluginIterator->second->WeightInfo().pt, isCuda ? "gpu" : "cpu");
+        if (!FileUtil::exist(path)) {
+            SPDLOG_WARN("model:{} path:{} not exists.", pluginIterator->first, path);
+            continue;
+        }
+        auto model = torch::jit::load(path);
+        if (isCuda) {
+            model.to(torch::kCUDA);
+        }
+        model.eval();
+        ModelInfo modelInfo = {pluginIterator->first, pluginIterator->second->WeightInfo().enable, model,
+                               pluginIterator->second->WeightInfo().labels};
+        models.push_back(modelInfo);
+    }
+
+}
+
 YoloV5::YoloV5(std::string weightstr, bool isCuda, int height, int width, float confThres,
                float iouThres) {
-    rapidjson::Document dom;
-    at::set_num_threads(1);
-    if (!dom.Parse(weightstr.c_str()).HasParseError()) {
-        if (dom.IsArray()) {
-            this->height = height;
-            this->width = width;
-            this->isCuda = isCuda;
-            this->iouThres = iouThres;
-            this->confThres = confThres;
-            rapidjson::Value &weights = dom.GetArray();
-            size_t len = weights.Size();
-            for (size_t i = 0; i < len; i++) {
-                const rapidjson::Value &weight = weights[i];
-                if (weight.IsObject()) {
-                    if (weight.HasMember("path") && weight.HasMember("name") && weight.HasMember("label") &&
-                        weight.HasMember("similarity")) {
-                        string path = weight["path"].GetString();
-                        string name = weight["name"].GetString();
-                        string label = weight["label"].GetString();
-                        double similarity = weight["similarity"].GetDouble();
-                        bool enable = weight["enable"].GetBool();
-                        path = fmt::format("{}.{}.pt", path, isCuda ? "gpu" : "cpu");
-                        if (!FileUtil::exist(path)) {
-                            SPDLOG_WARN("model:{} path:{} not exists.", name, path);
-                            continue;
-                        }
-                        auto model = torch::jit::load(path);
-                        if (isCuda) {
-                            model.to(torch::kCUDA);
-                        }
-                        model.eval();
-                        std::map<int, std::string> labels;
-                        int j = 0;
-                        vector<string> lbs = StrUtil::split(label, ',');
-                        for (auto l: lbs) {
-                            labels.insert({j, l});
-                            j++;
-                        }
-                        ModelInfo modelInfo = {name, similarity, enable, model, labels};
-                        models.push_back(modelInfo);
-                        SPDLOG_INFO("load model:{} labels:{}  similarity:{} cuda:{} enable:{}", name, labels.size(),
-                                    similarity, isCuda, enable);
-                    }
-                }
-            }
-        }
-    }
+
 }
 
 
-std::vector<torch::Tensor> YoloV5::non_max_suppression(torch::Tensor prediction, float confThres, float iouThres) {
+std::vector <torch::Tensor> YoloV5::non_max_suppression(torch::Tensor prediction, float confThres, float iouThres) {
     torch::Tensor xc = prediction.select(2, 4) > confThres;
     int maxWh = 4096;
     int maxNms = 30000;
-    std::vector<torch::Tensor> output;
+    std::vector <torch::Tensor> output;
     for (int i = 0; i < prediction.size(0); i++) {
         output.push_back(torch::zeros({0, 6}));
     }
@@ -71,7 +51,7 @@ std::vector<torch::Tensor> YoloV5::non_max_suppression(torch::Tensor prediction,
 
         x.slice(1, 5, x.size(1)).mul_(x.slice(1, 4, 5));
         torch::Tensor box = xywh2xyxy(x.slice(1, 0, 4));
-        std::tuple<torch::Tensor, torch::Tensor> max_tuple = torch::max(x.slice(1, 5, x.size(1)), 1, true);
+        std::tuple <torch::Tensor, torch::Tensor> max_tuple = torch::max(x.slice(1, 5, x.size(1)), 1, true);
         x = torch::cat({box, std::get<0>(max_tuple), std::get<1>(max_tuple)}, 1);
         x = x.index_select(0, torch::nonzero(std::get<0>(max_tuple) > confThres).select(1, 0));
         int n = x.size(0);
@@ -158,9 +138,9 @@ torch::Tensor YoloV5::nms(torch::Tensor bboxes, torch::Tensor scores, float thre
     return torch::tensor(keep);
 }
 
-std::vector<torch::Tensor>
-YoloV5::sizeOriginal(std::vector<torch::Tensor> result, std::vector<ImageResizeData> imgRDs) {
-    std::vector<torch::Tensor> resultOrg;
+std::vector <torch::Tensor>
+YoloV5::sizeOriginal(std::vector <torch::Tensor> result, std::vector <ImageResizeData> imgRDs) {
+    std::vector <torch::Tensor> resultOrg;
     for (int i = 0; i < result.size(); i++) {
 
         torch::Tensor data = result[i];
@@ -196,8 +176,8 @@ YoloV5::sizeOriginal(std::vector<torch::Tensor> result, std::vector<ImageResizeD
     return resultOrg;
 }
 
-std::vector<torch::Tensor> YoloV5::prediction(torch::Tensor data) {
-    std::vector<torch::Tensor> rs;
+std::vector <torch::Tensor> YoloV5::prediction(torch::Tensor data) {
+    std::vector <torch::Tensor> rs;
     if (!data.is_cuda() && this->isCuda) {
         data = data.cuda();
     }
@@ -206,13 +186,13 @@ std::vector<torch::Tensor> YoloV5::prediction(torch::Tensor data) {
     }
     for (auto modelInfo: models) {
         torch::Tensor pred = modelInfo.model.forward({data}).toTuple()->elements()[0].toTensor();
-        std::vector<torch::Tensor> temp = non_max_suppression(pred, confThres, iouThres);
+        std::vector <torch::Tensor> temp = non_max_suppression(pred, confThres, iouThres);
         rs.insert(rs.end(), temp.begin(), temp.end());
     }
     return rs;
 }
 
-std::vector<Event> YoloV5::prediction(cv::Mat img, set<string> algorithm_list) {
+std::vector <Event> YoloV5::prediction(cv::Mat img, set <string> algorithm_list) {
     m_mutexPred.lock();
     ImageResizeData imgRD = resize(img);
     cv::Mat reImg = img2RGB(imgRD.getImg());
@@ -245,10 +225,6 @@ std::vector<Event> YoloV5::prediction(cv::Mat img, set<string> algorithm_list) {
         torch::Tensor rectangle = temp[0];
         for (int i = 0; i < rectangle.size(0); i++) {
             float hold = rectangle[i][4].item().toFloat();
-            if (hold < modelInfo.similarity) {
-                SPDLOG_INFO("modelname: {} hold:{} yuzhi :{} return", modelInfo.name, hold, modelInfo.similarity);
-                continue;
-            }
             //获取事件类型
             int event = rectangle[i][5].item().toInt();
             if (event == -1)continue;
@@ -259,7 +235,7 @@ std::vector<Event> YoloV5::prediction(cv::Mat img, set<string> algorithm_list) {
             eventInfo.bottom = rectangle[i][3].item().toInt();
             eventInfo.event = event;
             eventInfo.hold = hold;
-            eventInfo.label = modelInfo.labels[event];
+            eventInfo.weight = modelInfo.labels[event];
             events.push_back(eventInfo);
         }
     }
@@ -267,25 +243,25 @@ std::vector<Event> YoloV5::prediction(cv::Mat img, set<string> algorithm_list) {
     return events;
 }
 
-std::vector<torch::Tensor> YoloV5::prediction(std::string filePath) {
+std::vector <torch::Tensor> YoloV5::prediction(std::string filePath) {
     cv::Mat img = cv::imread(filePath);
     return prediction(img);
 }
 
-std::vector<torch::Tensor> YoloV5::prediction(cv::Mat img) {
+std::vector <torch::Tensor> YoloV5::prediction(cv::Mat img) {
     ImageResizeData imgRD = resize(img);
     cv::Mat reImg = img2RGB(imgRD.getImg());
     torch::Tensor data = img2Tensor(reImg);
-    std::vector<torch::Tensor> result = prediction(data);
-    std::vector<ImageResizeData> imgRDs;
+    std::vector <torch::Tensor> result = prediction(data);
+    std::vector <ImageResizeData> imgRDs;
     imgRDs.push_back(imgRD);
     return sizeOriginal(result, imgRDs);
 }
 
 
-std::vector<torch::Tensor> YoloV5::prediction(std::vector<cv::Mat> imgs) {
-    std::vector<ImageResizeData> imageRDs;
-    std::vector<torch::Tensor> datas;
+std::vector <torch::Tensor> YoloV5::prediction(std::vector <cv::Mat> imgs) {
+    std::vector <ImageResizeData> imageRDs;
+    std::vector <torch::Tensor> datas;
     for (int i = 0; i < imgs.size(); i++) {
         ImageResizeData imgRD = resize(imgs[i]);
         imageRDs.push_back(imgRD);
@@ -293,7 +269,7 @@ std::vector<torch::Tensor> YoloV5::prediction(std::vector<cv::Mat> imgs) {
         datas.push_back(img2Tensor(img));
     }
     torch::Tensor data = torch::cat(datas, 0);
-    std::vector<torch::Tensor> result = prediction(data);
+    std::vector <torch::Tensor> result = prediction(data);
     return sizeOriginal(result, imageRDs);
 }
 
@@ -326,35 +302,35 @@ ImageResizeData YoloV5::resize(cv::Mat img) {
     return YoloV5::resize(img, height, width);
 }
 
-std::vector<ImageResizeData> YoloV5::resize(std::vector<cv::Mat> imgs, int height, int width) {
-    std::vector<ImageResizeData> imgRDs;
+std::vector <ImageResizeData> YoloV5::resize(std::vector <cv::Mat> imgs, int height, int width) {
+    std::vector <ImageResizeData> imgRDs;
     for (int i = 0; i < imgs.size(); i++) {
         imgRDs.push_back(YoloV5::resize(imgs[i], height, width));
     }
     return imgRDs;
 }
 
-std::vector<ImageResizeData> YoloV5::resize(std::vector<cv::Mat> imgs) {
+std::vector <ImageResizeData> YoloV5::resize(std::vector <cv::Mat> imgs) {
     return YoloV5::resize(imgs, height, width);
 }
 
-std::vector<cv::Mat> YoloV5::drawRectangle(std::vector<cv::Mat> imgs, std::vector<torch::Tensor> rectangles,
-                                           std::map<int, std::string> labels, int thickness) {
+std::vector <cv::Mat> YoloV5::drawRectangle(std::vector <cv::Mat> imgs, std::vector <torch::Tensor> rectangles,
+                                            std::map<int, std::string> labels, int thickness) {
     std::map<int, cv::Scalar> colors;
     return drawRectangle(imgs, rectangles, colors, labels, thickness);
 }
 
-std::vector<cv::Mat>
-YoloV5::drawRectangle(std::vector<cv::Mat> imgs, std::vector<torch::Tensor> rectangles, int thickness) {
+std::vector <cv::Mat>
+YoloV5::drawRectangle(std::vector <cv::Mat> imgs, std::vector <torch::Tensor> rectangles, int thickness) {
     std::map<int, cv::Scalar> colors;
     std::map<int, std::string> labels;
     return drawRectangle(imgs, rectangles, colors, labels, thickness);
 }
 
-std::vector<cv::Mat> YoloV5::drawRectangle(std::vector<cv::Mat> imgs, std::vector<torch::Tensor> rectangles,
-                                           std::map<int, cv::Scalar> colors, std::map<int, std::string> labels,
-                                           int thickness) {
-    std::vector<cv::Mat> results;
+std::vector <cv::Mat> YoloV5::drawRectangle(std::vector <cv::Mat> imgs, std::vector <torch::Tensor> rectangles,
+                                            std::map<int, cv::Scalar> colors, std::map<int, std::string> labels,
+                                            int thickness) {
+    std::vector <cv::Mat> results;
     for (int i = 0; i < imgs.size(); i++) {
         results.push_back(drawRectangle(imgs[i], rectangles[i], colors, labels, thickness));
     }
@@ -380,7 +356,7 @@ void YoloV5::drawRectangleFace(cv::Mat img, int left, int top, int right, int bo
     cv::rectangle(img, cv::Point(left, top - 20),
                   cv::Point(left + width, top),
                   cv::Scalar(255, 153, 0), -1, cv::LINE_AA);
-    cv::Ptr<cv::freetype::FreeType2> ft2 = cv::freetype::createFreeType2();
+    cv::Ptr <cv::freetype::FreeType2> ft2 = cv::freetype::createFreeType2();
     ft2->loadFontData("./simsun.ttc", 0);
     //wenzi
     ft2->putText(img, text, cv::Point(left, top - 2), 20,
@@ -404,7 +380,7 @@ void YoloV5::drawRectangle(cv::Mat img, int left, int top, int right, int bottom
     cv::rectangle(img, cv::Point(left, top - 20),
                   cv::Point(left + width, top),
                   cv::Scalar(0, 0, 255), -1, cv::LINE_AA);
-    cv::Ptr<cv::freetype::FreeType2> ft2 = cv::freetype::createFreeType2();
+    cv::Ptr <cv::freetype::FreeType2> ft2 = cv::freetype::createFreeType2();
     ft2->loadFontData("./simsun.ttc", 0);
     //wenzi
     ft2->putText(img, label, cv::Point(left, top - 2), 20,
@@ -460,7 +436,7 @@ bool YoloV5::existencePrediction(torch::Tensor clazz) {
     return clazz.size(0) > 0 ? true : false;
 }
 
-bool YoloV5::existencePrediction(std::vector<torch::Tensor> classs) {
+bool YoloV5::existencePrediction(std::vector <torch::Tensor> classs) {
     for (int i = 0; i < classs.size(); i++) {
         if (existencePrediction(classs[i])) {
             return true;

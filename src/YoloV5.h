@@ -12,6 +12,7 @@
 #include "EasyNvr.h"
 #include "StrUtil.h"
 #include "FileUtil.h"
+#include "Plugin.h"
 
 using namespace std;
 
@@ -76,13 +77,12 @@ private:
 
 struct ModelInfo {
     string name;
-    double similarity;
     bool enable;
     torch::jit::script::Module model;
-    std::map<int, std::string> labels;
+    unordered_map<int, Label> labels;
 };
 struct Event {
-    string label;
+    Label weight;
     float hold;
     int event;
     int left;
@@ -103,6 +103,19 @@ public:
      * @param iouThres 非极大值抑制中的 iouThresh
      */
     YoloV5(std::string ptFile, bool isCuda = false, int height = 640, int width = 640,
+           float confThres = 0.25,
+           float iouThres = 0.45);
+
+    /**
+     * 构造函数
+     * @param ptFile yoloV5 pt文件路径
+     * @param isCuda 是否使用 cuda 默认不起用
+     * @param height yoloV5 训练时图片的高
+     * @param width yoloV5 训练时图片的宽
+     * @param confThres 非极大值抑制中的 scoreThresh
+     * @param iouThres 非极大值抑制中的 iouThresh
+     */
+    YoloV5(map<string, Plugin *> plugins, bool isCuda = false, int height = 640, int width = 640,
            float confThres = 0.25,
            float iouThres = 0.45);
 

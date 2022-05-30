@@ -15,7 +15,16 @@ bool PluginManager::addPlugin(const char *luaScriptName) {
     string script(this->scriptFoler);
     script.append("/").append(luaScriptName);
     Plugin *plugin = new Plugin(script.c_str());
+    this->plugins.insert({plugin->Name(), plugin});
     return true;
+}
+
+Plugin *PluginManager::getPlugin(const char *plugin) {
+    if (this->plugins.count(plugin) != 0) {
+        return this->plugins[plugin];
+    } else {
+        return nullptr;
+    }
 }
 
 bool PluginManager::initPlugins() {

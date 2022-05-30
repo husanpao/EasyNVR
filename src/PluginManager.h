@@ -29,6 +29,7 @@ public:
 
     bool removePlugin(const char *luaScriptName);
 
+    Plugin *getPlugin(const char *plugin);
 
 private:
     PluginManager() {
@@ -43,6 +44,7 @@ private:
 private:
     char *scriptFoler = "scripts";
 
+    map<string, Plugin *> plugins;
 };
 
 
