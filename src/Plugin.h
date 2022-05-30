@@ -15,25 +15,24 @@ using namespace std;
 class Plugin {
     struct Weight {
         string name;
-        double similarity;
+        double threshold;
         bool enable;
-        std::map<int, std::string> labels;
+        unordered_map<int, std::string> labels;
         string model;
     };
 public:
     ~Plugin() {
-        std::cout << "LuaManager  destructor..." << std::endl;
+        L.close();
+        std::cout << "Plugin  destory..." << std::endl;
     }
 
     Plugin(const char *script);
 
-    void Hello();
 
 private:
     //lua 虚拟机
-    luakit::kit_state *L;
+    luakit::kit_state L;
     Weight weight;
-    char *test = "name";
 };
 
 

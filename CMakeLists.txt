@@ -6,14 +6,14 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 set(OpenCV_DIR D:\\SDK_CPP\\opencv\\newbuild\\install)
 find_package(OpenCV REQUIRED)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 #设置FFMPEG头文件目录
 set(FFMPEG D:\\SDK_CPP\\ffmpeg-master-latest-win64-gpl-shared\\include)
 
 file(GLOB LIBNAMES ${CMAKE_CURRENT_SOURCE_DIR}/libs/*.lib)
 
-file(GLOB luascripts "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.lua")
-file(COPY ${luascripts} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/bin/scripts)
+#file(GLOB luascripts "${CMAKE_CURRENT_SOURCE_DIR}/scripts/*.lua")
+#file(COPY ${luascripts} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/bin/scripts)
 
 #引入项目头文件
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

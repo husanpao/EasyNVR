@@ -7,7 +7,9 @@ Plugin = {
     Name = "Helmet_Head_Person";
     Path = "weights/helmet.gpu.pt"
 }
-hello()
 function Run()
-    print("Name:")
+    print("Single Run")
+end
+function Plugin:Run()
+    print("Plugin Run")
 end
