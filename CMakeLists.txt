@@ -6,6 +6,9 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 set(OpenCV_DIR D:\\SDK_CPP\\opencv\\newbuild\\install)
 find_package(OpenCV REQUIRED)
+set(Torch_DIR D:\\SDK_CPP\\libtorch-win-shared-with-deps-debug-1.10.1+cu102\\libtorch\\share\\cmake\\Torch)
+find_package(Torch REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 #设置FFMPEG头文件目录
 set(FFMPEG D:\\SDK_CPP\\ffmpeg-master-latest-win64-gpl-shared\\include)
@@ -26,5 +29,5 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src SRCS)
 #可执行文件
 add_executable(${APPNAME} ${SRCS})
 #链接第三方库
-target_link_libraries(${APPNAME} PUBLIC ${OpenCV_LIBS} ${LIBNAMES})
+target_link_libraries(${APPNAME} PUBLIC ${OpenCV_LIBS} ${LIBNAMES} ${TORCH_LIBRARIES})
 #target_link_libraries(${APPNAME} PRIVATE co libssl libcrypto avutil avformat avcodec avdevice avfilter swresample swscale)

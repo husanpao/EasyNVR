@@ -6,6 +6,7 @@
 #define EASYNVR_CAMERAHANDLE_H
 
 #include "CameraPull.h"
+#include "YoloV5.h"
 
 class CameraHandle {
 public:

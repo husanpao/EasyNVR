@@ -16,3 +16,19 @@ bool StrUtil::startswith(const char *src, const char *find) {
 bool StrUtil::startswith(string src, string find) {
     return startswith(src.c_str(), find.c_str());
 }
+
+
+vector<string> StrUtil::split(string &src, char split) {
+    vector<string> res;
+    const char *p = src.c_str();
+    const char *value = p;
+    while (*p != '\0') {
+        if (*p == split) {
+            res.push_back(std::string(value, p - value));
+            value = p + 1;
+        }
+        ++p;
+    }
+    res.push_back(value);
+    return res;
+}

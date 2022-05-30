@@ -70,6 +70,7 @@ int CameraPull::start() {
         ret = av_read_frame(this->fmtContext, this->videoPacket);
         if (ret < 0) {
             while (!queue.empty()) {
+                queue.pop();
                 cv::waitKey(100);
             }
             SPDLOG_INFO("[{}] av_read_frame error result:{} queue size:{}", this->id, ret, queue.size());
