@@ -34,7 +34,7 @@ void initLog() {
 int main(int argc, char *argv[]) {
     initLog();
     PluginManager::GetInStance();
-//    CameraHandle *camera = new CameraHandle("1000", "rtsp://127.0.0.1:554/live/test/");
-//    camera->startPrediction();
+    CameraHandle *camera = new CameraHandle("1000", "rtsp://127.0.0.1:554/live/test/");
+    camera->startPrediction();
     return 0;
 }

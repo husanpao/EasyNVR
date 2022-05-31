@@ -3,21 +3,36 @@
 --- Created by uma-pc001.
 --- DateTime: 2022/5/27 15:23
 ---
-
-
+--struct Label {
+--    string name;
+--    bool render;
+--    string text;
+--    float threshold;
+--    bool flag;
+--};
+--struct Event {
+--    Label weight;
+--    float hold;
+--    int event;
+--    int left;
+--    int right;
+--    int top;
+--    int bottom;
+--};
 Plugin = {
     name = "helmet",
     pt = "weights/helmet",
-    labels = { { name = "person", render = true, text = "人员", threshold = 7.5, flag = true },
-               { name = "head", render = true, text = "未戴安全帽", threshold = 7.6, flag = true },
-               { name = "helmet", render = true, text = "安全帽", flag = true } },
+    labels = { { name = "person", render = true, text = "��Ա", threshold = 7.5, flag = true },
+               { name = "head", render = true, text = "δ����ȫñ", threshold = 7.6, flag = true },
+               { name = "helmet", render = true, text = "��ȫñ", flag = true } },
     threshold = 6.2,
     enable = true
 }
 function Plugin:Run()
     print("Plugin Run")
-    for k, v in pairs(events) do
-        print("lvec", k)
+    for idx, event in pairs(events) do
+        
+
     end
     return 0
 end

@@ -4,6 +4,23 @@
 
 #include "CameraHandle.h"
 
+luakit::lua_table CameraHandle::formatEvent(vector<Event> events, luakit::kit_state lua) {
+    auto eventsTab = lua.new_table("events");
+    int i = 0;
+    for (Event event: events) {
+        auto label = lua.new_table(fmt::format("label_{}", i).c_str());
+        label.set("name", event.weight.name, "render", event.weight.render, "text", event.weight.text, "threshold",
+                  event.weight.threshold, "flag", event.weight.flag);
+        auto eventTab = lua.new_table(fmt::format("event_{}", i).c_str());
+        eventTab.set("event", event.event, "left", event.left, "hold", event.hold, "right", event.right, "top",
+                     event.top, "bottom", event.bottom, "weight", label);
+        eventsTab.set(fmt::format("{}", i).c_str(), eventTab);
+        i++;
+    }
+    return eventsTab;
+}
+
+
 void CameraHandle::Handle(cv::Mat frame) {
     if (frame.empty()) {
         return;
@@ -12,11 +29,9 @@ void CameraHandle::Handle(cv::Mat frame) {
         const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
         for (auto plugin: this->plugins) {
             auto lua = plugin.second->luaEngine(this->id);
-            auto lmap = unordered_map<int, Label>{{1, {"a"}},
-                                                  {2, {"b"}},
-                                                  {3, {"c"}}};
-            lua.set("events", lmap);
+            formatEvent(events, lua);
             lua.table_call("Plugin", "Run", nullptr);
+            SPDLOG_INFO("{}", events.at(0).weight.text);
         }
         SPDLOG_INFO("[{}] events count:{} ", this->id, events.size());
     }

@@ -18,7 +18,9 @@ public:
     CameraHandle(string id, string url);
 
 private:
-    void CameraHandle::Handle(cv::Mat frame);
+    void Handle(cv::Mat frame);
+
+    luakit::lua_table formatEvent(vector<Event> events, luakit::kit_state lua);
 
 private:
     string url;

@@ -31,19 +31,21 @@ Plugin::Plugin(const char *script) {
         l.flag = label.get<bool>("flag");
         this->weight.labels.insert({i++, l});
     }
-
-    vector<Label> lvec;
-    lvec.push_back({"a"});
-    lvec.push_back({"b"});
-    kit_state.set("events", lvec);
-    kit_state.table_call("Plugin", "Run", nullptr);
-
 }
 
 luakit::kit_state Plugin::luaEngine(string id) {
     if (this->luaEngines.count(id) == 0) {
         auto kit_state = luakit::kit_state();
         kit_state.run_file(script);
+        kit_state.set_function("INFO", [this, id](string log) {
+            SPDLOG_INFO("[{}] [{}] :{}", id, this->Name(), log);
+        });
+        kit_state.set_function("WARN", [this, id](string log) {
+            SPDLOG_WARN("[{}] [{}] :{}", id, this->Name(), log);
+        });
+        kit_state.set_function("ERROR", [this, id](string log) {
+            SPDLOG_ERROR("[{}] [{}] :{}", id, this->Name(), log);
+        });
         this->luaEngines.insert({id, kit_state});
     }
     return this->luaEngines[id];
