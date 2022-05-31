@@ -6,6 +6,7 @@
 
 YoloV5::YoloV5(map<string, Plugin *> plugins, bool isCuda, int height, int width, float confThres,
                float iouThres) {
+    at::set_num_threads(1);
     map<string, Plugin *>::iterator pluginIterator;
     this->height = height;
     this->width = width;
@@ -193,7 +194,6 @@ std::vector <torch::Tensor> YoloV5::prediction(torch::Tensor data) {
 }
 
 std::vector <Event> YoloV5::prediction(cv::Mat img, set <string> algorithm_list) {
-    m_mutexPred.lock();
     ImageResizeData imgRD = resize(img);
     cv::Mat reImg = img2RGB(imgRD.getImg());
     torch::Tensor data = img2Tensor(reImg);
@@ -239,7 +239,6 @@ std::vector <Event> YoloV5::prediction(cv::Mat img, set <string> algorithm_list)
             events.push_back(eventInfo);
         }
     }
-    m_mutexPred.unlock();
     return events;
 }
 

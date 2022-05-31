@@ -4,20 +4,31 @@
 
 #include "CameraHandle.h"
 
-luakit::lua_table CameraHandle::formatEvent(vector<Event> events, luakit::kit_state lua) {
+luakit::lua_table CameraHandle::formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua) {
     auto eventsTab = lua.new_table("events");
-    int i = 0;
-    for (Event event: events) {
-        auto label = lua.new_table(fmt::format("label_{}", i).c_str());
-        label.set("name", event.weight.name, "render", event.weight.render, "text", event.weight.text, "threshold",
-                  event.weight.threshold, "flag", event.weight.flag);
-        auto eventTab = lua.new_table(fmt::format("event_{}", i).c_str());
-        eventTab.set("event", event.event, "left", event.left, "hold", event.hold, "right", event.right, "top",
-                     event.top, "bottom", event.bottom, "weight", label);
-        eventsTab.set(fmt::format("{}", i).c_str(), eventTab);
-        i++;
+
+    map<string, vector<Event>>::iterator eventIterator;
+    for (eventIterator = classifyEvent.begin();
+         eventIterator != classifyEvent.end(); eventIterator++) {
+        auto classifyTab = lua.new_table(eventIterator->first.c_str());
+        int i = 0;
+        for (Event event: eventIterator->second) {
+            auto label = lua.new_table(fmt::format("label_{}", i).c_str());
+            label.set("name", event.weight.name, "render", event.weight.render, "text", event.weight.text, "threshold",
+                      event.weight.threshold, "flag", event.weight.flag);
+            auto eventTab = lua.new_table(fmt::format("event_{}", i).c_str());
+            eventTab.set("event", event.event, "left", event.left, "hold", event.hold, "right", event.right, "top",
+                         event.top, "bottom", event.bottom, "weight", label);
+            classifyTab.set(fmt::format("{}", i).c_str(), eventTab);
+            i++;
+        }
+        eventsTab.set(eventIterator->first.c_str(), classifyTab);
     }
     return eventsTab;
+}
+
+void CameraHandle::drawFrame(cv::Mat frame) {
+    
 }
 
 
@@ -27,12 +38,30 @@ void CameraHandle::Handle(cv::Mat frame) {
     }
     if (this->frameCount++ % 5 == 0) {
         const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
-        for (auto plugin: this->plugins) {
-            auto lua = plugin.second->luaEngine(this->id);
-            formatEvent(events, lua);
-            lua.table_call("Plugin", "Run", nullptr);
-            SPDLOG_INFO("{}", events.at(0).weight.text);
+        map<string, vector<Event>> classifyEvent;
+        for (Event event: events) {
+            if (classifyEvent.count(event.weight.name) == 0) {
+                vector<Event> tempEvents;
+                tempEvents.push_back(event);
+                classifyEvent.insert({event.weight.name, tempEvents});
+            } else {
+                classifyEvent[event.weight.name].push_back(event);
+            }
         }
+        thread_pool *taskPool = new thread_pool(this->plugins.size());
+        for (auto plugin: this->plugins) {
+            taskPool->push_task([plugin, this, classifyEvent, frame]() {
+                auto lua = plugin.second->luaEngine(this->id);
+                formatEvent(classifyEvent, lua);
+                lua.table_call("Plugin", "Run");
+                vector<luakit::lua_table> rs = lua.get<luakit::lua_table>(
+                        "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
+                this->drawFrame(frame);
+                SPDLOG_INFO("[{}] rs count:{} ", this->id, rs.size());
+            });
+        }
+        taskPool->wait_for_tasks();
+        delete taskPool;
         SPDLOG_INFO("[{}] events count:{} ", this->id, events.size());
     }
 }

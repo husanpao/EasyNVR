@@ -279,8 +279,6 @@ public:
 private:
     // 是否启用 cuda
     bool isCuda;
-    mutex m_mutexDraw;
-    mutex m_mutexPred;
     // 非极大值抑制中的第一步数据清理
     float confThres;
     // 非极大值抑制中 iou

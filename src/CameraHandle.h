@@ -8,6 +8,7 @@
 #include "CameraPull.h"
 #include "YoloV5.h"
 #include "PluginManager.h"
+#include"thread_pool.hpp"
 
 class CameraHandle {
 public:
@@ -20,7 +21,9 @@ public:
 private:
     void Handle(cv::Mat frame);
 
-    luakit::lua_table formatEvent(vector<Event> events, luakit::kit_state lua);
+    luakit::lua_table formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua);
+
+    void drawFrame(cv::Mat frame);
 
 private:
     string url;

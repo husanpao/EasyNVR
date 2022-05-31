@@ -31,6 +31,7 @@ Plugin::Plugin(const char *script) {
         l.flag = label.get<bool>("flag");
         this->weight.labels.insert({i++, l});
     }
+    
 }
 
 luakit::kit_state Plugin::luaEngine(string id) {
