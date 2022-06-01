@@ -81,15 +81,7 @@ struct ModelInfo {
     torch::jit::script::Module model;
     unordered_map<int, Label> labels;
 };
-struct Event {
-    Label weight;
-    float hold;
-    int event;
-    int left;
-    int right;
-    int top;
-    int bottom;
-};
+
 
 class YoloV5 {
 public:

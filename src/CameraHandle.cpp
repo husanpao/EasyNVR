@@ -28,7 +28,7 @@ luakit::lua_table CameraHandle::formatEvent(map<string, vector<Event>> classifyE
 }
 
 void CameraHandle::drawFrame(cv::Mat frame) {
-    
+
 }
 
 
@@ -38,31 +38,31 @@ void CameraHandle::Handle(cv::Mat frame) {
     }
     if (this->frameCount++ % 5 == 0) {
         const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
-        map<string, vector<Event>> classifyEvent;
-        for (Event event: events) {
-            if (classifyEvent.count(event.weight.name) == 0) {
-                vector<Event> tempEvents;
-                tempEvents.push_back(event);
-                classifyEvent.insert({event.weight.name, tempEvents});
-            } else {
-                classifyEvent[event.weight.name].push_back(event);
+        if (events.size() > 0) {
+            map<string, vector<Event>> classifyEvent;
+            for (Event event: events) {
+                if (classifyEvent.count(event.weight.name) == 0) {
+                    vector<Event> tempEvents;
+                    tempEvents.push_back(event);
+                    classifyEvent.insert({event.weight.name, tempEvents});
+                } else {
+                    classifyEvent[event.weight.name].push_back(event);
+                }
             }
+            thread_pool *taskPool = new thread_pool(this->plugins.size());
+            for (auto plugin: this->plugins) {
+                taskPool->push_task([plugin, this, classifyEvent, frame]() {
+                    auto lua = plugin.second->luaEngine(this->id);
+                    formatEvent(classifyEvent, lua);
+                    lua.table_call("Plugin", "Run");
+                    vector<luakit::lua_table> rs = lua.get<luakit::lua_table>(
+                            "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
+                    this->drawFrame(frame);
+                });
+            }
+            taskPool->wait_for_tasks();
+            delete taskPool;
         }
-        thread_pool *taskPool = new thread_pool(this->plugins.size());
-        for (auto plugin: this->plugins) {
-            taskPool->push_task([plugin, this, classifyEvent, frame]() {
-                auto lua = plugin.second->luaEngine(this->id);
-                formatEvent(classifyEvent, lua);
-                lua.table_call("Plugin", "Run");
-                vector<luakit::lua_table> rs = lua.get<luakit::lua_table>(
-                        "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
-                this->drawFrame(frame);
-                SPDLOG_INFO("[{}] rs count:{} ", this->id, rs.size());
-            });
-        }
-        taskPool->wait_for_tasks();
-        delete taskPool;
-        SPDLOG_INFO("[{}] events count:{} ", this->id, events.size());
     }
 }
 

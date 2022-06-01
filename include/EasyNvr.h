@@ -28,4 +28,34 @@ struct Weight {
     unordered_map<int, Label> labels;
     string pt;
 };
+struct Event {
+    Label weight;
+    float hold;
+    int event;
+    int left;
+    int right;
+    int top;
+    int bottom;
+};
+
+class LabelClass {
+public:
+    string name;
+    bool render;
+    string text;
+    float threshold;
+    bool flag;
+};
+
+class EventClass {
+public:
+    LabelClass *weight;
+    float hold;
+    int event;
+    int left;
+    int right;
+    int top;
+    int bottom;
+};
+
 #endif //EASYNVR_EASYNVR_H
