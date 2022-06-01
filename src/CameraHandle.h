@@ -23,7 +23,7 @@ private:
 
     luakit::lua_table formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua);
 
-    void drawFrame(cv::Mat frame);
+    void drawFrame(cv::Mat frame, Event event);
 
 private:
     string url;

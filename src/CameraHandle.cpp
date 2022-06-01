@@ -27,8 +27,8 @@ luakit::lua_table CameraHandle::formatEvent(map<string, vector<Event>> classifyE
     return eventsTab;
 }
 
-void CameraHandle::drawFrame(cv::Mat frame) {
-
+void CameraHandle::drawFrame(cv::Mat frame, Event event) {
+    this->yolo->drawRectangle(frame, event.left, event.top, event.right, event.bottom, event.weight.text);
 }
 
 
@@ -37,12 +37,12 @@ void CameraHandle::Handle(cv::Mat frame) {
         return;
     }
     if (this->frameCount++ % 5 == 0) {
-        const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
+        const vector <Event> &events = this->yolo->prediction(frame, this->algorithm_list);
         if (events.size() > 0) {
-            map<string, vector<Event>> classifyEvent;
+            map <string, vector<Event>> classifyEvent;
             for (Event event: events) {
                 if (classifyEvent.count(event.weight.name) == 0) {
-                    vector<Event> tempEvents;
+                    vector <Event> tempEvents;
                     tempEvents.push_back(event);
                     classifyEvent.insert({event.weight.name, tempEvents});
                 } else {
@@ -55,15 +55,19 @@ void CameraHandle::Handle(cv::Mat frame) {
                     auto lua = plugin.second->luaEngine(this->id);
                     formatEvent(classifyEvent, lua);
                     lua.table_call("Plugin", "Run");
-                    vector<luakit::lua_table> rs = lua.get<luakit::lua_table>(
+                    vector<luakit::lua_table> events = lua.get<luakit::lua_table>(
                             "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
-                    this->drawFrame(frame);
+                    for (luakit::lua_table event: events) {
+                        this->drawFrame(frame, plugin.second->luaTab2Event(event));
+                    }
                 });
             }
             taskPool->wait_for_tasks();
             delete taskPool;
         }
     }
+    cv::imshow("w", frame);
+    cv::waitKey(1);
 }
 
 void CameraHandle::startPrediction() {

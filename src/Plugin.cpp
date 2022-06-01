@@ -2,6 +2,7 @@
 // Created by uma-pc001 on 2022/5/27.
 //
 
+#include <chrono>
 #include "Plugin.h"
 
 Plugin::Plugin(const char *script) {
@@ -31,39 +32,6 @@ Plugin::Plugin(const char *script) {
         l.flag = label.get<bool>("flag");
         this->weight.labels.insert({i++, l});
     }
-    kit_state.new_class<LabelClass>(
-            "name", &LabelClass::name,
-            "render", &LabelClass::render,
-            "text", &LabelClass::text,
-            "threshold", &LabelClass::threshold,
-            "flag", &LabelClass::flag
-    );
-    kit_state.new_class<EventClass>(
-            "weight", &EventClass::weight,
-            "hold", &EventClass::hold,
-            "event", &EventClass::event,
-            "left", &EventClass::left,
-            "right", &EventClass::right,
-            "top", &EventClass::top,
-            "bottom", &EventClass::bottom
-    );
-    LabelClass *l = new LabelClass();
-    l->name = "name";
-    l->threshold = 1;
-    l->render = false;
-    l->text = "text";
-    l->flag = true;
-    auto e = new EventClass();
-    e->hold = 1;
-    e->bottom = 1;
-    e->event = 1;
-    e->weight = l;
-    e->top = 1;
-    e->left = 1;
-    e->right = 1;
-    kit_state.set("testEvent", e);
-    kit_state.table_call("Plugin", "Test");
-
 }
 
 luakit::lua_table Plugin::Event2luaTab(Event event) {
@@ -153,6 +121,12 @@ luakit::kit_state Plugin::luaEngine(string id) {
             auto ae = this->luaTab2Event(a);
             auto be = this->luaTab2Event(b);
             return overlapRate(ae, be);
+        });
+        kit_state.set_function("MS", [this, id]() {
+//            SPDLOG_INFO("{}",);
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tpMicro
+                    = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            return tpMicro.time_since_epoch().count();
         });
         this->luaEngines.insert({id, kit_state});
     }
