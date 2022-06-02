@@ -28,7 +28,7 @@ luakit::lua_table CameraHandle::formatEvent(map<string, vector<Event>> classifyE
 }
 
 void CameraHandle::drawFrame(cv::Mat frame, Event event) {
-    this->yolo->drawRectangle(frame, event.left, event.top, event.right, event.bottom, event.weight.text);
+//    this->yolo->drawRectangle(frame, event.left, event.top, event.right, event.bottom, event.weight.text);
 }
 
 
@@ -37,36 +37,37 @@ void CameraHandle::Handle(cv::Mat frame) {
         return;
     }
     if (this->frameCount++ % 5 == 0) {
-        const vector <Event> &events = this->yolo->prediction(frame, this->algorithm_list);
-        if (events.size() > 0) {
-            map <string, vector<Event>> classifyEvent;
-            for (Event event: events) {
-                if (classifyEvent.count(event.weight.name) == 0) {
-                    vector <Event> tempEvents;
-                    tempEvents.push_back(event);
-                    classifyEvent.insert({event.weight.name, tempEvents});
-                } else {
-                    classifyEvent[event.weight.name].push_back(event);
-                }
-            }
-            thread_pool *taskPool = new thread_pool(this->plugins.size());
-            for (auto plugin: this->plugins) {
-                taskPool->push_task([plugin, this, classifyEvent, frame]() {
-                    auto lua = plugin.second->luaEngine(this->id);
-                    formatEvent(classifyEvent, lua);
-                    lua.table_call("Plugin", "Run");
-                    vector<luakit::lua_table> events = lua.get<luakit::lua_table>(
-                            "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
-                    for (luakit::lua_table event: events) {
-                        this->drawFrame(frame, plugin.second->luaTab2Event(event));
-                    }
-                });
-            }
-            taskPool->wait_for_tasks();
-            delete taskPool;
-        }
+        ncnn->detect(frame);
+//        const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
+//        if (events.size() > 0) {
+//            map<string, vector<Event>> classifyEvent;
+//            for (Event event: events) {
+//                if (classifyEvent.count(event.weight.name) == 0) {
+//                    vector<Event> tempEvents;
+//                    tempEvents.push_back(event);
+//                    classifyEvent.insert({event.weight.name, tempEvents});
+//                } else {
+//                    classifyEvent[event.weight.name].push_back(event);
+//                }
+//            }
+//            thread_pool *taskPool = new thread_pool(this->plugins.size());
+//            for (auto plugin: this->plugins) {
+//                taskPool->push_task([plugin, this, classifyEvent, frame]() {
+//                    auto lua = plugin.second->luaEngine(this->id);
+//                    formatEvent(classifyEvent, lua);
+//                    lua.table_call("Plugin", "Run");
+//                    vector<luakit::lua_table> events = lua.get<luakit::lua_table>(
+//                            "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
+//                    for (luakit::lua_table event: events) {
+//                        this->drawFrame(frame, plugin.second->luaTab2Event(event));
+//                    }
+//                });
+//            }
+//            taskPool->wait_for_tasks();
+//            delete taskPool;
+//        }
     }
-    cv::imshow("w", frame);
+    cv::imshow(id, frame);
     cv::waitKey(1);
 }
 
@@ -98,7 +99,8 @@ CameraHandle::CameraHandle(string id, string url) : url(url), id(id) {
     this->plugins.insert({plugin->Name(), plugin});
 
     this->algorithm_list.insert(pluginName);
-    this->yolo = new YoloV5(this->plugins, true);
+
+    ncnn = new Ncnn();
     this->frameCount = 0;
 }
 

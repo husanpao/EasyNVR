@@ -6,7 +6,7 @@
 #define EASYNVR_CAMERAHANDLE_H
 
 #include "CameraPull.h"
-#include "YoloV5.h"
+#include "Ncnn.h"
 #include "PluginManager.h"
 #include"thread_pool.hpp"
 
@@ -33,9 +33,8 @@ private:
     int frameCount;//帧数
 
     CameraPull *cameraPull;//拉取器
-    YoloV5 *yolo;
     set<string> algorithm_list;
-
+    Ncnn *ncnn;
     map<string, Plugin *> plugins;
 };
 

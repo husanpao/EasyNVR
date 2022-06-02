@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by uma-pc001 on 2022/5/27.
 //
 
@@ -12,7 +12,9 @@
 #include "rapidjson/writer.h"
 #include "spdlog/spdlog.h"
 #include "scope_guard.hpp"
-
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 using namespace std;
 struct Label {
     string name;
@@ -37,6 +39,12 @@ struct Event {
     int top;
     int bottom;
 };
+struct NcnnObject {
+    cv::Rect_<float> rect;
+    int label;
+    float prob;
+};
+
 
 class LabelClass {
 public:
