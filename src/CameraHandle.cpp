@@ -38,6 +38,7 @@ void CameraHandle::Handle(cv::Mat frame) {
     }
     if (this->frameCount++ % 5 == 0) {
         ncnn->detect(frame);
+
 //        const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
 //        if (events.size() > 0) {
 //            map<string, vector<Event>> classifyEvent;

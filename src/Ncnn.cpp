@@ -8,19 +8,18 @@ Ncnn::Ncnn() {
     addWeight();
 };
 
-std::vector<NcnnObject> Ncnn::detect(const cv::Mat &bgr) {
+std::vector<NcnnObject> Ncnn::detect(const cv::Mat &img) {
+    if (img.empty()) return {};
+
     const float prob_threshold = 0.25f;
     const float nms_threshold = 0.45f;
-    ncnn::Mat in_pad = resize(bgr);
+    ncnn::Mat in_pad = resize(img);
     int i = 0;
     for (auto net: this->weights) {
         ncnn::Extractor ex = net->create_extractor();
         ex.set_num_threads(1);
         ex.input("in0", in_pad);
         std::vector<NcnnObject> proposals;
-        // anchor setting from yolov5/models/yolov5s.yaml
-
-        // stride 8
         {
             ncnn::Mat out;
             ex.extract("out0", out);
@@ -31,10 +30,8 @@ std::vector<NcnnObject> Ncnn::detect(const cv::Mat &bgr) {
             anchors[3] = 30.f;
             anchors[4] = 33.f;
             anchors[5] = 23.f;
-
             std::vector<NcnnObject> objects8;
             generate_proposals(anchors, 8, in_pad, out, prob_threshold, objects8);
-
             proposals.insert(proposals.end(), objects8.begin(), objects8.end());
         }
         // stride 16
@@ -56,7 +53,6 @@ std::vector<NcnnObject> Ncnn::detect(const cv::Mat &bgr) {
         {
             ncnn::Mat out;
             ex.extract("out2", out);
-
             ncnn::Mat anchors(6);
             anchors[0] = 116.f;
             anchors[1] = 90.f;
@@ -64,10 +60,8 @@ std::vector<NcnnObject> Ncnn::detect(const cv::Mat &bgr) {
             anchors[3] = 198.f;
             anchors[4] = 373.f;
             anchors[5] = 326.f;
-
             std::vector<NcnnObject> objects32;
             generate_proposals(anchors, 32, in_pad, out, prob_threshold, objects32);
-
             proposals.insert(proposals.end(), objects32.begin(), objects32.end());
         }
         qsort_descent_inplace(proposals);
@@ -257,6 +251,7 @@ ncnn::Mat Ncnn::resize(const cv::Mat &bgr) {
 
 void Ncnn::addWeight() {
     ncnn::Net *net = new ncnn::Net();
+    net->opt.use_fp16_arithmetic = false;
     net->opt.use_vulkan_compute = true;
 
     net->load_param("yolov5s.ncnn.param");

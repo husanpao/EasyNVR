@@ -42,6 +42,7 @@ struct Event {
 struct NcnnObject {
     cv::Rect_<float> rect;
     int label;
+    string label_text;
     float prob;
 };
 
