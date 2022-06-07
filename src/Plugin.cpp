@@ -24,14 +24,16 @@ Plugin::Plugin(const char *script) {
     int i = 0;
     for (luakit::lua_table label: labels) {
         Label l;
-        l.name = label.get<string>("name");
+        l.zh = label.get<string>("zh");
         l.render = label.get<bool>("render");
-        l.text = label.get<string>("text");
+        l.en = label.get<string>("en");
         l.threshold = label.get<float>("threshold");
         l.threshold = l.threshold ? l.threshold : this->weight.threshold;
         l.flag = label.get<bool>("flag");
+        this->lables.insert({l.en, l});
         this->weight.labels.insert({i++, l});
     }
+
 }
 
 luakit::lua_table Plugin::Event2luaTab(Event event) {
@@ -41,19 +43,19 @@ luakit::lua_table Plugin::Event2luaTab(Event event) {
 }
 
 bool Plugin::intersect(Event a, Event b) {
-    if (abs((a.left + a.right) / 2 - (b.left + b.right) / 2) <
-        ((a.right + b.right - a.left - b.left) / 2)
-        && abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) <
-           ((a.bottom + b.bottom - a.top - b.top) / 2))
+    if (abs((a.x1 + a.x2) / 2 - (b.x1 + b.x2) / 2) <
+        ((a.x2 + b.x2 - a.x1 - b.x1) / 2)
+        && abs((a.y1 + a.y2) / 2 - (b.y1 + b.y2) / 2) <
+           ((a.y2 + b.y2 - a.y1 - b.y1) / 2))
         return true;
     return false;
 }
 
 float Plugin::overlapRate(Event a, Event b) {
-    cv::Rect rc1(a.left, a.top, a.right - a.left,
-                 a.bottom - a.top);
-    cv::Rect rc2(b.left, b.top, b.right - b.left,
-                 b.bottom - b.top);
+    cv::Rect rc1(a.x1, a.y1, a.x2 - a.x1,
+                 a.y2 - a.y1);
+    cv::Rect rc2(b.x1, b.y1, b.x2 - b.x1,
+                 b.y2 - b.y1);
     CvPoint p1, p2;                 //p1为相交位置的左上角坐标，p2为相交位置的右下角坐标
     p1.x = std::max(rc1.x, rc2.x);
     p1.y = std::max(rc1.y, rc2.y);
@@ -80,19 +82,27 @@ float Plugin::overlapRate(Event a, Event b) {
 
 
 Event Plugin::luaTab2Event(luakit::lua_table table) {
-    auto weight = table.get<luakit::lua_table>("weight");
-    auto name = weight.get<string>("name");
-    auto render = weight.get<bool>("render");
-    auto text = weight.get<string>("text");
-    auto threshold = weight.get<float>("threshold");
-    auto flag = weight.get<bool>("flag");
-    auto hold = table.get<float>("hold");
-    auto event = table.get<int>("event");
-    auto left = table.get<int>("left");
-    auto right = table.get<int>("right");
-    auto top = table.get<int>("top");
-    auto bottom = table.get<int>("bottom");
-    return {{name, render, text, threshold, flag}, hold, event, left, right, top, bottom};
+    auto threshold = table.get<float>("threshold");
+    auto label = table.get<int>("label");
+    auto label_zh = table.get<string>("label_zh");
+    auto label_en = table.get<string>("label_en");
+    auto x1 = table.get<int>("x1");
+    auto y1 = table.get<int>("y1");
+    auto x2 = table.get<int>("x2");
+    auto y2 = table.get<int>("y2");
+    return {threshold, label, label_zh, label_en, x1, y1, x2, y2};
+}
+
+NcnnObject Plugin::luaTab2Ncnn(luakit::lua_table table) {
+    auto event = luaTab2Event(table);
+    NcnnObject ncnnObject;
+    ncnnObject.label = event.label;
+    ncnnObject.label_zh = event.label_zh;
+    ncnnObject.label_en = event.label_en;
+    ncnnObject.threshold = event.threshold;
+    cv::Rect_ rect(event.x1, event.y1, event.x2 - event.x1, event.y2 - event.y1);
+    ncnnObject.rect = rect;
+    return ncnnObject;
 }
 
 luakit::kit_state Plugin::luaEngine(string id) {
@@ -123,11 +133,18 @@ luakit::kit_state Plugin::luaEngine(string id) {
             return overlapRate(ae, be);
         });
         kit_state.set_function("MS", [this, id]() {
-//            SPDLOG_INFO("{}",);
             std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tpMicro
                     = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
             return tpMicro.time_since_epoch().count();
         });
+        auto lablesTab = kit_state.new_table("LABLES");
+        for (auto label: lables) {
+            auto labelTab = kit_state.new_table(label.first.c_str());
+            labelTab.set("en", label.second.en, "render", label.second.render, "zh", label.second.zh, "threshold",
+                         label.second.threshold, "flag", label.second.flag);
+            lablesTab.set(label.first.c_str(), labelTab);
+        }
+        
         this->luaEngines.insert({id, kit_state});
     }
     return this->luaEngines[id];

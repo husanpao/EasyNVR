@@ -4,27 +4,21 @@
 
 #include "CameraHandle.h"
 
-luakit::lua_table CameraHandle::formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua) {
+void CameraHandle::formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua) {
     auto eventsTab = lua.new_table("events");
-
-    map<string, vector<Event>>::iterator eventIterator;
-    for (eventIterator = classifyEvent.begin();
-         eventIterator != classifyEvent.end(); eventIterator++) {
-        auto classifyTab = lua.new_table(eventIterator->first.c_str());
+    for (auto eventList: classifyEvent) {
+        auto classifyTab = lua.new_table(eventList.first.c_str());
         int i = 0;
-        for (Event event: eventIterator->second) {
-            auto label = lua.new_table(fmt::format("label_{}", i).c_str());
-            label.set("name", event.weight.name, "render", event.weight.render, "text", event.weight.text, "threshold",
-                      event.weight.threshold, "flag", event.weight.flag);
+        for (Event event: eventList.second) {
             auto eventTab = lua.new_table(fmt::format("event_{}", i).c_str());
-            eventTab.set("event", event.event, "left", event.left, "hold", event.hold, "right", event.right, "top",
-                         event.top, "bottom", event.bottom, "weight", label);
+            eventTab.set("threshold", event.threshold, "label", event.label, "x1", event.x1, "y1", event.y1, "x2",
+                         event.x2, "y2",
+                         event.y2, "label_zh", event.label_zh, "label_en", event.label_en);
             classifyTab.set(fmt::format("{}", i).c_str(), eventTab);
             i++;
         }
-        eventsTab.set(eventIterator->first.c_str(), classifyTab);
+        eventsTab.set(eventList.first.c_str(), classifyTab);
     }
-    return eventsTab;
 }
 
 void CameraHandle::drawFrame(cv::Mat frame, Event event) {
@@ -37,37 +31,41 @@ void CameraHandle::Handle(cv::Mat frame) {
         return;
     }
     if (this->frameCount++ % 5 == 0) {
-        ncnn->detect(frame);
-
-//        const vector<Event> &events = this->yolo->prediction(frame, this->algorithm_list);
-//        if (events.size() > 0) {
-//            map<string, vector<Event>> classifyEvent;
-//            for (Event event: events) {
-//                if (classifyEvent.count(event.weight.name) == 0) {
-//                    vector<Event> tempEvents;
-//                    tempEvents.push_back(event);
-//                    classifyEvent.insert({event.weight.name, tempEvents});
-//                } else {
-//                    classifyEvent[event.weight.name].push_back(event);
-//                }
-//            }
-//            thread_pool *taskPool = new thread_pool(this->plugins.size());
-//            for (auto plugin: this->plugins) {
-//                taskPool->push_task([plugin, this, classifyEvent, frame]() {
-//                    auto lua = plugin.second->luaEngine(this->id);
-//                    formatEvent(classifyEvent, lua);
-//                    lua.table_call("Plugin", "Run");
-//                    vector<luakit::lua_table> events = lua.get<luakit::lua_table>(
-//                            "Events").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
-//                    for (luakit::lua_table event: events) {
-//                        this->drawFrame(frame, plugin.second->luaTab2Event(event));
-//                    }
-//                });
-//            }
-//            taskPool->wait_for_tasks();
-//            delete taskPool;
-//        }
+        this->events.clear();
+        std::vector<NcnnObject> tempEvents;
+        ncnn->Detect(frame, tempEvents);
+        if (tempEvents.size() > 0) {
+            map<string, vector<Event>> classifyEvent;
+            for (NcnnObject event: tempEvents) {
+                Event eventStruct = {event.threshold, event.label, event.label_zh, event.label_en, (int) event.rect.x,
+                                     (int) event.rect.y,
+                                     (int) (event.rect.x + event.rect.width), (int) (event.rect.y + event.rect.height)};
+                if (classifyEvent.count(event.label_en) == 0) {
+                    vector<Event> tempEvents;
+                    tempEvents.push_back(eventStruct);
+                    classifyEvent.insert({event.label_en, tempEvents});
+                } else {
+                    classifyEvent[event.label_en].push_back(eventStruct);
+                }
+            }
+            thread_pool *taskPool = new thread_pool(this->plugins.size());
+            for (auto plugin: this->plugins) {
+                taskPool->push_task([plugin, this, classifyEvent, frame]() {
+                    auto lua = plugin.second->luaEngine(this->id);
+                    formatEvent(classifyEvent, lua);
+                    lua.table_call("Plugin", "Run");
+                    vector<luakit::lua_table> events = lua.get<luakit::lua_table>(
+                            "RS").to_sequence<vector<luakit::lua_table>, luakit::lua_table>();
+                    for (luakit::lua_table event: events) {
+                        this->events.push_back(plugin.second->luaTab2Ncnn(event));
+                    }
+                });
+            }
+            taskPool->wait_for_tasks();
+            delete taskPool;
+        }
     }
+    ncnn->Draw(frame, events,true);
     cv::imshow(id, frame);
     cv::waitKey(1);
 }
@@ -85,23 +83,27 @@ void CameraHandle::startPrediction() {
         }
         SPDLOG_INFO("[{}] Handle end ", this->id);
     });
-
-
+    handle.detach();
     this->cameraPull->start();
+    this->prediction = false;
+    SPDLOG_INFO("endPrediction");
 }
 
-CameraHandle::CameraHandle(string id, string url) : url(url), id(id) {
+CameraHandle::CameraHandle(string id, string url, string plugins) : url(url), id(id) {
     this->cameraPull = new CameraPull(this->url, id);
-    string pluginName = "helmet";
-    auto plugin = PluginManager::GetInStance().getPlugin(pluginName.c_str());
-    if (plugin == nullptr) {
-        SPDLOG_ERROR("[{}] init {} plugin error.", this->id, pluginName);
+    this->ncnn = new Ncnn();
+    auto pluginsStr = StrUtil::split(plugins, ',');
+    for (string pluginName: pluginsStr) {
+        auto plugin = PluginManager::GetInStance().getPlugin(pluginName.c_str());
+        if (plugin == nullptr) {
+            SPDLOG_ERROR("[{}] init {} plugin error.", this->id, pluginName);
+        } else {
+            this->ncnn->AddNet(pluginName.c_str(), plugin->WeightInfo().labels,
+                               fmt::format("{}.ncnn.param", plugin->Name()).c_str(),
+                               fmt::format("{}.ncnn.bin", plugin->Name()).c_str());
+            this->plugins.insert({plugin->Name(), plugin});
+        }
     }
-    this->plugins.insert({plugin->Name(), plugin});
-
-    this->algorithm_list.insert(pluginName);
-
-    ncnn = new Ncnn();
     this->frameCount = 0;
 }
 

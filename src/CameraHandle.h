@@ -16,12 +16,12 @@ public:
 
     void startPrediction();
 
-    CameraHandle(string id, string url);
+    CameraHandle(string id, string url, string plugins);
 
 private:
     void Handle(cv::Mat frame);
 
-    luakit::lua_table formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua);
+    void formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua);
 
     void drawFrame(cv::Mat frame, Event event);
 
@@ -32,8 +32,10 @@ private:
     bool render;
     int frameCount;//帧数
 
+    std::vector<NcnnObject> events;
+
+
     CameraPull *cameraPull;//拉取器
-    set<string> algorithm_list;
     Ncnn *ncnn;
     map<string, Plugin *> plugins;
 };

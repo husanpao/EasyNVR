@@ -9,40 +9,42 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <map>
 #include "ncnn/layer.h"
 #include "ncnn/net.h"
 
 
 class Ncnn {
-
+    struct MyNet {
+        ncnn::Net *net;
+        unordered_map<int, Label> labels;
+    };
 public:
 
     Ncnn();
 
-    std::vector<NcnnObject> detect(const cv::Mat &bgr);
+    ~Ncnn();
 
+    int Detect(const cv::Mat &bgr, std::vector<NcnnObject> &objects);
+
+    void Draw(cv::Mat bgr, const std::vector<NcnnObject> &objects, bool showProd=false);
+
+    void AddNet(const char *name, unordered_map<int, Label> labels, const char *param, const char *bin);
 
 private:
-    ncnn::Mat resize(const cv::Mat &bgr);
 
-    void addWeight();
 
     void generate_proposals(const ncnn::Mat &anchors, int stride, const ncnn::Mat &in_pad, const ncnn::Mat &feat_blob,
                             float prob_threshold, std::vector<NcnnObject> &objects);
-
-    float sigmoid(float x);
-
-    void qsort_descent_inplace(std::vector<NcnnObject> &faceobjects);
 
     void qsort_descent_inplace(std::vector<NcnnObject> &faceobjects, int left, int right);
 
     void nms_sorted_bboxes(const std::vector<NcnnObject> &faceobjects, std::vector<int> &picked, float nms_threshold);
 
-    float intersection_area(const NcnnObject &a, const NcnnObject &b);
+    void qsort_descent_inplace(std::vector<NcnnObject> &faceobjects);
 
 private:
-    vector<ncnn::Net *> weights;
-
+    std::map<string, MyNet> nets;
 };
 
 

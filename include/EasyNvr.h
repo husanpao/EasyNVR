@@ -15,11 +15,14 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
 using namespace std;
+
+
 struct Label {
-    string name;
+    string en;
     bool render;
-    string text;
+    string zh;
     float threshold;
     bool flag;
 };
@@ -31,40 +34,22 @@ struct Weight {
     string pt;
 };
 struct Event {
-    Label weight;
-    float hold;
-    int event;
-    int left;
-    int right;
-    int top;
-    int bottom;
+    float threshold;
+    int label;
+    string label_zh;
+    string label_en;
+    int x1;
+    int y1;
+    int x2;
+    int y2;
 };
 struct NcnnObject {
     cv::Rect_<float> rect;
     int label;
-    string label_text;
-    float prob;
-};
-
-
-class LabelClass {
-public:
-    string name;
-    bool render;
-    string text;
+    string label_zh;
+    string label_en;
     float threshold;
-    bool flag;
 };
 
-class EventClass {
-public:
-    LabelClass *weight;
-    float hold;
-    int event;
-    int left;
-    int right;
-    int top;
-    int bottom;
-};
 
 #endif //EASYNVR_EASYNVR_H
