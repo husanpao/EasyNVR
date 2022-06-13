@@ -6,7 +6,7 @@
 #define EASYNVR_CAMERAHANDLE_H
 
 #include "CameraPull.h"
-#include "YoloV5.h"
+#include "Ncnn.h"
 #include "PluginManager.h"
 #include"thread_pool.hpp"
 
@@ -16,12 +16,12 @@ public:
 
     void startPrediction();
 
-    CameraHandle(string id, string url);
+    CameraHandle(string id, string url, string plugins);
 
 private:
     void Handle(cv::Mat frame);
 
-    luakit::lua_table formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua);
+    void formatEvent(map<string, vector<Event>> classifyEvent, luakit::kit_state lua);
 
     void drawFrame(cv::Mat frame, Event event);
 
@@ -32,10 +32,11 @@ private:
     bool render;
     int frameCount;//帧数
 
-    CameraPull *cameraPull;//拉取器
-    YoloV5 *yolo;
-    set<string> algorithm_list;
+    std::vector<NcnnObject> events;
 
+
+    CameraPull *cameraPull;//拉取器
+    Ncnn *ncnn;
     map<string, Plugin *> plugins;
 };
 

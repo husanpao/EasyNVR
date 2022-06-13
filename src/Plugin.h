@@ -32,6 +32,8 @@ public:
 
     Event luaTab2Event(luakit::lua_table table);
 
+    NcnnObject luaTab2Ncnn(luakit::lua_table table);
+
     luakit::lua_table Event2luaTab(Event event);
 
     bool intersect(Event a, Event b);
@@ -44,7 +46,7 @@ private:
     Weight weight;
 
     string script;
-
+    unordered_map<string, Label> lables;
     map<string, luakit::kit_state> luaEngines;
 };
 
